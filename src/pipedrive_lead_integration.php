@@ -1,4 +1,6 @@
-<?php
+<?php 
+
+include 'helpers.php';
 
 // Read the file test_data.json
 $json = file_get_contents('tests/test_data.json');
@@ -29,53 +31,38 @@ if (file_exists($envFile)) {
 // Make an organization name
 $name = $data['name'];
 $contactType = $data['contact_type'];
-$orgName = $contactType . " - " . $name;
 
 $domain = "nettbureaucase";
 $apiToken = $_ENV['PIPEDRIVE_API_TOKEN'] ?? null;
 
 $url = "https://{$domain}.pipedrive.com/api/v2/organizations?api_token={$apiToken}";
 
+function createOrganization($data, $url) {
+    $orgName = $data['contact_type'] . ' - ' . $data['name'];
 
-function sendPostRequest($url, $payload) {
-    $connect = curl_init($url);
-    curl_setopt_array($connect, [
-        CURLOPT_POST => true,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS => json_encode($payload)]);
+    $payload = ['name' => $orgName];
 
-    $response = curl_exec($connect);
-    $httpStatus = curl_getinfo($connect, CURLINFO_HTTP_CODE);
-    curl_close($connect);
+    $response = sendPostRequest($url, $payload);
 
-    $data = json_decode($response, true);
-    return $data;
+    if (isset($response['data']['id'])) {
+        return (int)$response['data']['id'];
+    }
+    return null;
 }
 
-function sendGetRequest($url) {
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER => [
-        "Content-Type: application/json"
-    ]
-]);
-    // Execute the request
-    $response = curl_exec($ch);
-    // Check for errors
-    if ($response === false) {
-        die("cURL error: " . curl_error($ch));
-    }
-    $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    // Show HTTP status
-    echo "HTTP Status: {$httpStatus}\n";
-    // Decode JSON response
-    $data = json_decode($response, true);
-    return $data;
+function createPerson($data, $url, $orgId) {
+    $personName = $data['name'];
+    $payload = ['name'=> $personName,
+                'orgId'=> $orgId];
 }
 
 echo "Response preview:\n";
-$data = sendGetRequest($url);
+
+//$orgId = createOrganization($data, $url);
+//echo "orgId = " . ($orgId ?? 'null') . PHP_EOL;
+$id = 180;
+$url2 = "https://{$domain}.pipedrive.com/api/v2/organizations/{$id}?api_token={$apiToken}";
+
+$data = sendGetRequest($url2);
 print_r(array_slice($data, 0, 2));
+
