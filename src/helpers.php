@@ -39,16 +39,12 @@ function sendGetRequest($url) {
     return $data;
 }
 
-function contactType($typeData):?int {
+function contactType($typeData): ?int {
    switch ($typeData) {
-    case 'Privat':
-        return 27;
-    case 'Borettslag':
-        return 28;
-    case 'Bedrift':
-        return 29;
-    default:
-        return null;
+    case 'Privat':     return 27;
+    case 'Borettslag': return 28;
+    case 'Bedrift':    return 29;
+    default:           return null;
     }
 }
 
@@ -67,17 +63,11 @@ function housingType($typeData): ?int {
 function dealType($typeData): ?int
 {
     switch ($typeData) {
-        case 'Alle strømavtaler er aktuelle':
-            return 42;
-        case 'Fastpris':
-            return 43;
-        case 'Spotpris':
-            return 44;
-        case 'Kraftforvaltning':
-            return 45;
-        case 'Annen avtale/vet ikke':
-            return 46;
-        default:
-            return null;
+        case 'Alle strømavtaler er aktuelle': return 42;
+        case 'Fastpris':                      return 43;
+        case 'Spotpris':                      return 44;
+        case 'Kraftforvaltning':              return 45;
+        case 'Annen avtale/vet ikke':         return 46;
+        default:                              return null;
     }
 }

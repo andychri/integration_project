@@ -51,16 +51,43 @@ function createOrganization($data, $url) {
 }
 
 function createPerson($data, $url, $orgId) {
-    $personName = $data['name'];
-    $payload = ['name'=> $personName,
-                'orgId'=> $orgId];
+    $payload = ['name'  => $data['name'],
+                'orgId' => $orgId,
+                'email' => $data['email'],
+                'phone' => $data['phone'],
+                'custom_fields' => [
+                    'contact_type' => contactType($data['contact_type'])
+                ]];
+
+    $resp = sendPostRequest($url, $payload);
+
+    return isset($resp['data']['id']) ? (int)$resp['data']['id'] : null;
+}
+
+function createLead($data, $url, $orgId, $personId) {
+    $payload = [
+        'title'     => 'Strøm.no lead – ' . ($data['name'] ?? 'Ukjent'),
+        'person_id' => $personId,
+        'org_id'    => $orgId,
+        'custom_fields' => [
+            'housing_type'  => housingType($data['housing_type'] ?? null),
+            'property_size' => isset($data['property_size']) ? (int)$data['property_size'] : null,
+            'deal_type'     => dealType($data['deal_type'] ?? null),
+            'comment'       => $data['comment'] ?? null,
+        ],
+    ];
+
+    $resp = sendPostRequest($url, $payload);
+    if (!$resp) return null;
+
+    return $resp['data']['id'] ?? null;
 }
 
 echo "Response preview:\n";
 
 //$orgId = createOrganization($data, $url);
 //echo "orgId = " . ($orgId ?? 'null') . PHP_EOL;
-$id = 180;
+$id = 249;
 $url2 = "https://{$domain}.pipedrive.com/api/v2/organizations/{$id}?api_token={$apiToken}";
 
 $data = sendGetRequest($url2);
