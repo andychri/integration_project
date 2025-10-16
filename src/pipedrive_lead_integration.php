@@ -66,14 +66,14 @@ function createPerson($data, $url, $orgId) {
 
 function createLead($data, $url, $orgId, $personId) {
     $payload = [
-        'title'     => 'Strøm.no lead – ' . ($data['name'] ?? 'Ukjent'),
+        'title'     => 'Lead ' . ($data['name']),
         'person_id' => $personId,
         'org_id'    => $orgId,
         'custom_fields' => [
-            'housing_type'  => housingType($data['housing_type'] ?? null),
+            'housing_type'  => housingType($data['housing_type']),
             'property_size' => isset($data['property_size']) ? (int)$data['property_size'] : null,
-            'deal_type'     => dealType($data['deal_type'] ?? null),
-            'comment'       => $data['comment'] ?? null,
+            'deal_type'     => dealType($data['deal_type']),
+            'comment'       => $data['comment'],
         ],
     ];
 

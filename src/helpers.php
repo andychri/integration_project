@@ -1,5 +1,13 @@
 <?php
 
+
+/**
+ * Send a JSON POST request and return the decoded JSON response as an array.
+ *
+ * @param string $url     ENdpoint URL
+ * @param array  $payload PHP array that will be JSON-encoded and sent as the body.
+ * @return array|null     Decoded JSON array or null if something fails.
+ */
 function sendPostRequest($url, $payload) {
     $connect = curl_init($url);
     curl_setopt_array($connect, [
@@ -9,36 +17,40 @@ function sendPostRequest($url, $payload) {
         CURLOPT_POSTFIELDS => json_encode($payload)]);
 
     $response = curl_exec($connect);
+    if ($response === false) {
+        die("cURL error: " . curl_error($connect));
+    }
     $httpStatus = curl_getinfo($connect, CURLINFO_HTTP_CODE);
     curl_close($connect);
-
-    $data = json_decode($response, true);
-    return $data;
+    return json_decode($response, true);
 }
 
+/**
+ * Send a JSON GET request and return the decoded JSON response as an array.
+ *
+ * @param string $url     Endpoint URL
+ * @return array|null     Decoded JSON (assoc array) or null if decoding fails
+ */
 function sendGetRequest($url) {
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_HTTPHEADER => [
-        "Content-Type: application/json"
-    ]
-]);
-    // Execute the request
-    $response = curl_exec($ch);
-    // Check for errors
+    $connect = curl_init($url);
+    curl_setopt_array($connect, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => ["Content-Type: application/json"]]);
+
+    $response = curl_exec($connect);
     if ($response === false) {
-        die("cURL error: " . curl_error($ch));
+        die("cURL error: " . curl_error($connect));
     }
-    $httpStatus = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    // Show HTTP status
-    echo "HTTP Status: {$httpStatus}\n";
-    // Decode JSON response
-    $data = json_decode($response, true);
-    return $data;
+    $httpStatus = curl_getinfo($connect, CURLINFO_HTTP_CODE);
+    curl_close($connect);
+    return json_decode($response, true);
 }
 
+/**
+ * Map contact type to its numeric option ID
+ * @param mixed $typeData Readable string data from input
+ * @return int|null The id option as an int or null if the contact type is unknown
+ */
 function contactType($typeData): ?int {
    switch ($typeData) {
     case 'Privat':     return 27;
@@ -47,6 +59,12 @@ function contactType($typeData): ?int {
     default:           return null;
     }
 }
+
+/**
+ * Map housing type to its numeric option ID
+ * @param mixed $typeData Readable string data from input
+ * @return int|null The id option as an int or null if the contact type is unknown
+ */
 
 function housingType($typeData): ?int {
     switch ($typeData) {
@@ -60,8 +78,12 @@ function housingType($typeData): ?int {
     }
 }
 
-function dealType($typeData): ?int
-{
+/**
+ * Map deal type to its numeric option ID
+ * @param mixed $typeData Readable string data from input
+ * @return int|null The id option as an int or null if the contact type is unknown
+ */
+function dealType($typeData): ?int {
     switch ($typeData) {
         case 'Alle strømavtaler er aktuelle': return 42;
         case 'Fastpris':                      return 43;
