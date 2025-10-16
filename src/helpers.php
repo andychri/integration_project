@@ -21,6 +21,7 @@ function sendPostRequest($url, $payload) {
         die("cURL error: " . curl_error($connect));
     }
     $httpStatus = curl_getinfo($connect, CURLINFO_HTTP_CODE);
+    
     curl_close($connect);
     return json_decode($response, true);
 }
@@ -43,6 +44,8 @@ function sendGetRequest($url) {
     }
     $httpStatus = curl_getinfo($connect, CURLINFO_HTTP_CODE);
     curl_close($connect);
+
+    
     return json_decode($response, true);
 }
 

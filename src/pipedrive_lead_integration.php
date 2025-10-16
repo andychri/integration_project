@@ -2,19 +2,21 @@
 
 include 'helpers.php';
 
-// Read the file test_data.json
-$json = file_get_contents('tests/test_data.json');
 
-if ($json === false) {
-    die('Error reading the JSON file');
+function getTestData() {
+    $json = file_get_contents('tests/test_data.json');
+    if ($json === false) {
+        die('Error reading the JSON file');
+    }
+
+    $data = json_decode($json, true);
+
+    if ($data === null) {
+        die('Error decoding the JSON file');
+    }
+    return $data;
 }
-
-// Turn JSON text into PHP data
-$data = json_decode($json, true);
-
-if ($data === null) {
-    die('Error decoding the JSON file');
-}
+$data = getTestData();
 
 // Retreive the API token
 $envFile = '.env';
@@ -28,68 +30,127 @@ if (file_exists($envFile)) {
     }
 }
 
-// Make an organization name
-$name = $data['name'];
-$contactType = $data['contact_type'];
-
-$domain = "nettbureaucase";
 $apiToken = $_ENV['PIPEDRIVE_API_TOKEN'] ?? null;
 
-$url = "https://{$domain}.pipedrive.com/api/v2/organizations?api_token={$apiToken}";
+$url = "https://nettbureaucase.pipedrive.com/api/v2/organizations?api_token={$apiToken}";
 
-function createOrganization($data, $url) {
-    $orgName = $data['contact_type'] . ' - ' . $data['name'];
 
-    $payload = ['name' => $orgName];
+/**
+ * Summary of createOrganization
+ * @param array $data
+ * @param string $domain
+ * @param string $apiToken
+ * @return int|null
+ */
+function createOrganization(array $data, string $apiToken): ?int {
+    $orgName = '[' . ($data['contact_type'] ?? 'Ukjent') . '] ' . ($data['name'] ?? 'Ukjent');
 
-    $response = sendPostRequest($url, $payload);
+    // Check if organization exists
+    $checkUrl = "https://nettbureaucase.pipedrive.com/api/v2/organizations/search"
+              . "?term=" . rawurlencode($orgName)
+              . "&fields=name&exact_match=true&limit=1&api_token=$apiToken";
 
-    if (isset($response['data']['id'])) {
-        return (int)$response['data']['id'];
+              
+    // If this is true the organization exist
+    $getResponse = sendGetRequest($checkUrl);
+    $id = $getResponse['data']['items'][0]['item']['id'] ?? null;
+    if ($id) 
+        return (int)$id;
+
+    // Create a new organization
+    $postUrl = "https://nettbureaucase.pipedrive.com/api/v2/organizations?api_token=$apiToken";
+    $postResponse = sendPostRequest($postUrl, ['name' => $orgName]);
+    return isset($postResponse['data']['id']) ? (int)$postResponse['data']['id'] : null;
+}
+
+/**
+ * Summary of createPerson
+ * @param mixed $data
+ * @param mixed $url
+ * @param mixed $orgId
+ * @return int|null
+ */
+function createPerson($data, $url, $orgId, $apiToken) {
+
+    $personName = $data['name'] ?? 'Ukjent';
+
+    // 1) Check if person exists by exact name
+    $checkUrl = "https://nettbureaucase.pipedrive.com/api/v2/persons/search"
+              . "?term=" . rawurlencode($personName)
+              . "&fields=name&exact_match=true&limit=1&api_token=$apiToken";
+
+    $getResponse = sendGetRequest($checkUrl);
+    $id = $getResponse['data']['items'][0]['item']['id'] ?? null;
+    if ($id) return (int)$id;
+    
+    // Emails and phones are read as arrays with multiple items in v2 of PipeDrive.
+    $emails = [];
+    if (!empty($data['email'])) {
+        $emails[] = ['value'   => $data['email'], 
+                     'label'   => 'work', 
+                     'primary' => true];
     }
-    return null;
-}
+    $phones = [];
+    if (!empty($data['phone'])) {
+        $phones[] = ['value'   => (string)$data['phone'], 
+                     'label'   => 'mobile', 
+                     'primary' => true];
+    }
 
-function createPerson($data, $url, $orgId) {
-    $payload = ['name'  => $data['name'],
-                'orgId' => $orgId,
-                'email' => $data['email'],
-                'phone' => $data['phone'],
-                'custom_fields' => [
-                    'contact_type' => contactType($data['contact_type'])
-                ]];
-
-    $resp = sendPostRequest($url, $payload);
-
-    return isset($resp['data']['id']) ? (int)$resp['data']['id'] : null;
-}
-
-function createLead($data, $url, $orgId, $personId) {
     $payload = [
-        'title'     => 'Lead ' . ($data['name']),
-        'person_id' => $personId,
-        'org_id'    => $orgId,
+        'name'   => $data['name'] ?? 'Ukjent',
+        'org_id' => $orgId,
+        'emails' => $emails,
+        'phones' => $phones,
         'custom_fields' => [
-            'housing_type'  => housingType($data['housing_type']),
-            'property_size' => isset($data['property_size']) ? (int)$data['property_size'] : null,
-            'deal_type'     => dealType($data['deal_type']),
-            'comment'       => $data['comment'],
+            'c0b071d74d13386af76f5681194fd8cd793e6020' => contactType($data['contact_type'] ?? null), // 27/28/29
         ],
     ];
 
     $resp = sendPostRequest($url, $payload);
-    if (!$resp) return null;
-
-    return $resp['data']['id'] ?? null;
+    return isset($resp['data']['id']) ? (int)$resp['data']['id'] : null;
 }
 
-echo "Response preview:\n";
+/**
+ * Summary of createLead
+ * @param mixed $data
+ * @param mixed $url
+ * @param mixed $personId
+ * @param mixed $orgId
+ */
+function createLead($data, $url, $personId, $orgId, $apiToken) {
 
-//$orgId = createOrganization($data, $url);
-//echo "orgId = " . ($orgId ?? 'null') . PHP_EOL;
-$id = 249;
-$url2 = "https://{$domain}.pipedrive.com/api/v2/organizations/{$id}?api_token={$apiToken}";
+    // Build a simple title (expects $data['title'])
+    $title = '[LEAD] ' . trim($data['name'] ?? 'Ukjent');
 
-$data = sendGetRequest($url2);
-print_r(array_slice($data, 0, 2));
+    $checkUrl = "https://nettbureaucase.pipedrive.com/api/v2/leads/search"
+              . "?term=" . rawurlencode($title)
+              . "&fields=title&exact_match=true&limit=1"
+              . "&api_token=" . $apiToken;
 
+    $getResponse = sendGetRequest($checkUrl);
+    $existingId = $getResponse['data']['items'][0]['item']['id'] ?? null;
+    if ($existingId) {
+        return (string)$existingId;
+    }
+
+    $payload = [
+        'title'         => '[LEAD] ' . ($data['name'] ?? 'Ukjent'),
+        'person_id'     => $personId,
+        'organization_id'        => $orgId, // or organization_id if your tenant expects that
+        '35c4e320a6dee7094535c0fe65fd9e748754a171' => housingType($data['housing_type'] ?? null),
+        '533158ca6c8a97cc1207b273d5802bd4a074f887' => isset($data['property_size']) ? (int)$data['property_size'] : null,
+        '761dd27362225e433e1011b3bd4389a48ae4a412' => dealType($data['deal_type'] ?? null),
+        '1fe6a0769bd867d36c25892576862e9b423302f3' => $data['comment'] ?? null
+    ];
+
+    $resp = sendPostRequest($url, $payload);
+
+    // ↓ Look at the entire response (one line, easy to remove later)
+    echo "\n[createLead] FULL RESPONSE:\n";
+    echo json_encode($getResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
+    echo json_encode($resp, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
+
+    // keep your existing return
+    return $resp['data']['id'] ?? null;
+}
