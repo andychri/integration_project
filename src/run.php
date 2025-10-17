@@ -1,10 +1,14 @@
 <?php
 // run_tests.php — minimal runner
 
+define('DEBUG_OUT', getenv('DEBUG_OUT') === '1');
+function dprint($s){ if (DEBUG_OUT) echo $s; }
+
 require 'pipedrive_lead_integration.php'; // <-- change if your functions live in another file
 
+$testPath = $argv[1] ?? getenv('TEST_DATA') ?? 'tests/test_data.json';
 // load test data
-$data = getTestData();
+$data = getTestDataFrom($testPath);
 
 /// Retreive the API token
 $envFile = '.env';
@@ -28,6 +32,9 @@ $o1 = createOrganization($data, $token);
 $p1 = $o1 ? createPerson($data, $personPostUrl, $o1, $token) : null;
 $l1 = ($p1 && $o1) ? createLead($data, $leadPostUrl, $p1, $o1, $token) : null;
 
+// Gives the data som chance to be posted on the API
+sleep(1);
+
 // run again to test duplication
 $o2 = createOrganization($data, $token);
 $p2 = $o2 ? createPerson($data, $personPostUrl, $o2, $token) : null;
@@ -38,3 +45,18 @@ $pass = ($o1 && $o1===$o2) && ($p1 && $p1===$p2) && ($l1 && $l1===$l2);
 echo $pass ? "PASS\n" : "FAIL\n";
 echo "run1: org=$o1 person=$p1 lead=$l1\n";
 echo "run2: org=$o2 person=$p2 lead=$l2\n";
+
+$orgRaw  = $o1 ? sendGetRequest("https://nettbureaucase.pipedrive.com/api/v2/organizations/$o1?api_token=$token") : null;
+$persRaw = $p1 ? sendGetRequest("https://nettbureaucase.pipedrive.com/api/v2/persons/$p1?api_token=$token")       : null;
+// lead detail is v1
+$leadRaw = $l1 ? sendGetRequest("https://nettbureaucase.pipedrive.com/api/v1/leads/$l1?api_token=$token")          : null;
+
+echo "\nFIRST RUN RAW RESPONSES\n";
+echo "Organization:\n";
+echo json_encode($orgRaw, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n\n";
+
+echo "Person:\n";
+echo json_encode($persRaw, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n\n";
+
+echo "Lead:\n";
+echo json_encode($leadRaw, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";

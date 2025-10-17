@@ -1,0 +1,10 @@
+{
+  "name": "Luke Skywalker",
+  "email": "luke.skywalker@tatooine.gmail",
+  "phone": "41234567",
+  "contact_type": "Privat",
+  "housing_type": "Enebolig",
+  "property_size": 120,
+  "deal_type": "Spotpris",
+  "comment": "Vil ha enkel spotpris uten binding."
+}

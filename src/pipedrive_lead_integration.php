@@ -16,6 +16,21 @@ function getTestData() {
     }
     return $data;
 }
+
+function getTestDataFrom(string $path): array {
+    if (!is_file($path)) {
+        fwrite(STDERR, "Missing/invalid $path\n");
+        exit(1);
+    }
+    $json = file_get_contents($path);
+    $data = json_decode($json, true);
+    if (!is_array($data)) {
+        fwrite(STDERR, "Error decoding $path\n");
+        exit(1);
+    }
+    return $data;
+}
+
 $data = getTestData();
 
 // Retreive the API token
@@ -107,7 +122,9 @@ function createPerson($data, $url, $orgId, $apiToken) {
         ],
     ];
 
-    $resp = sendPostRequest($url, $payload);
+
+    $postUrl = "https://nettbureaucase.pipedrive.com/api/v2/persons?api_token=$apiToken";
+    $resp = sendPostRequest($postUrl, $payload);
     return isset($resp['data']['id']) ? (int)$resp['data']['id'] : null;
 }
 
@@ -144,12 +161,8 @@ function createLead($data, $url, $personId, $orgId, $apiToken) {
         '1fe6a0769bd867d36c25892576862e9b423302f3' => $data['comment'] ?? null
     ];
 
-    $resp = sendPostRequest($url, $payload);
-
-    // ↓ Look at the entire response (one line, easy to remove later)
-    echo "\n[createLead] FULL RESPONSE:\n";
-    echo json_encode($getResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
-    echo json_encode($resp, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
+    $postUrl  = "https://nettbureaucase.pipedrive.com/api/v1/leads?api_token={$apiToken}";
+    $resp = sendPostRequest($postUrl, $payload);
 
     // keep your existing return
     return $resp['data']['id'] ?? null;
