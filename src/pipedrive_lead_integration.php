@@ -3,20 +3,12 @@
 include 'helpers.php';
 
 
-function getTestData() {
-    $json = file_get_contents('tests/test_data.json');
-    if ($json === false) {
-        die('Error reading the JSON file');
-    }
-
-    $data = json_decode($json, true);
-
-    if ($data === null) {
-        die('Error decoding the JSON file');
-    }
-    return $data;
-}
-
+/**
+ * Read test data from a specific file path.
+ *
+ * @param string $path Path to a JSON file with test data.
+ * @return array       Decoded JSON as associative array.
+ */
 function getTestDataFrom(string $path): array {
     if (!is_file($path)) {
         fwrite(STDERR, "Missing/invalid $path\n");
@@ -31,31 +23,14 @@ function getTestDataFrom(string $path): array {
     return $data;
 }
 
-$data = getTestData();
-
-// Retreive the API token
-$envFile = '.env';
-if (file_exists($envFile)) {
-    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-    foreach ($lines as $line) {
-        if (strpos($line, '=') !== false) {
-            [$key, $value] = explode('=', $line, 2);
-            $_ENV[trim($key)] = trim($value);
-        }
-    }
-}
-
-$apiToken = $_ENV['PIPEDRIVE_API_TOKEN'] ?? null;
-
-$url = "https://nettbureaucase.pipedrive.com/api/v2/organizations?api_token={$apiToken}";
-
 
 /**
- * Summary of createOrganization
- * @param array $data
- * @param string $domain
- * @param string $apiToken
- * @return int|null
+ * Create or reuse an ORganization.
+ * Searches v2 by exact name. If not found, creates it.
+ *
+ * @param array  $data     Input data.
+ * @param string $apiToken Pipedrive API token.
+ * @return int|null        Organization ID or null on failure.
  */
 function createOrganization(array $data, string $apiToken): ?int {
     $orgName = '[' . ($data['contact_type'] ?? 'Ukjent') . '] ' . ($data['name'] ?? 'Ukjent');
@@ -68,6 +43,7 @@ function createOrganization(array $data, string $apiToken): ?int {
               
     // If this is true the organization exist
     $getResponse = sendGetRequest($checkUrl);
+    if (!$getResponse) return null; 
     $id = $getResponse['data']['items'][0]['item']['id'] ?? null;
     if ($id) 
         return (int)$id;
@@ -75,17 +51,21 @@ function createOrganization(array $data, string $apiToken): ?int {
     // Create a new organization
     $postUrl = "https://nettbureaucase.pipedrive.com/api/v2/organizations?api_token=$apiToken";
     $postResponse = sendPostRequest($postUrl, ['name' => $orgName]);
+    if (!$postResponse) return null; 
     return isset($postResponse['data']['id']) ? (int)$postResponse['data']['id'] : null;
 }
 
 /**
- * Summary of createPerson
- * @param mixed $data
- * @param mixed $url
- * @param mixed $orgId
- * @return int|null
+ * Create or reuse a Person linked to an Organization.
+ * Searches v2 by exact name. If not found, creates (v2) with optional emails/phones
+ * and sets a custom contact_type field.
+ *
+ * @param array  $data     Input data.
+ * @param int    $orgId    Organization ID to link.
+ * @param string $apiToken Pipedrive API token.
+ * @return int|null        Person ID or null on failure.
  */
-function createPerson($data, $url, $orgId, $apiToken) {
+function createPerson($data, $orgId, $apiToken):?int {
 
     $personName = $data['name'] ?? 'Ukjent';
 
@@ -95,6 +75,7 @@ function createPerson($data, $url, $orgId, $apiToken) {
               . "&fields=name&exact_match=true&limit=1&api_token=$apiToken";
 
     $getResponse = sendGetRequest($checkUrl);
+    if (!$getResponse) return null; 
     $id = $getResponse['data']['items'][0]['item']['id'] ?? null;
     if ($id) return (int)$id;
     
@@ -124,18 +105,22 @@ function createPerson($data, $url, $orgId, $apiToken) {
 
 
     $postUrl = "https://nettbureaucase.pipedrive.com/api/v2/persons?api_token=$apiToken";
-    $resp = sendPostRequest($postUrl, $payload);
-    return isset($resp['data']['id']) ? (int)$resp['data']['id'] : null;
+    $postResponse = sendPostRequest($postUrl, $payload);
+    if (!$postResponse) return null; 
+    return isset($postResponse['data']['id']) ? (int)$postResponse['data']['id'] : null;
 }
 
 /**
- * Summary of createLead
- * @param mixed $data
- * @param mixed $url
- * @param mixed $personId
- * @param mixed $orgId
+ * Create or reuse a Lead linked to the Person and Organization.
+ * Searches v2 by exact title "[LEAD] {name}". If not found, creates via v1.
+ *
+ * @param array  $data      Input data.
+ * @param int    $personId  Person ID.
+ * @param int    $orgId     Organization ID.
+ * @param string $apiToken  Pipedrive API token.
+ * @return string|null      Lead UUID string or null on failure.
  */
-function createLead($data, $url, $personId, $orgId, $apiToken) {
+function createLead($data, $personId, $orgId, $apiToken): ?string {
 
     // Build a simple title (expects $data['title'])
     $title = '[LEAD] ' . trim($data['name'] ?? 'Ukjent');
@@ -146,6 +131,7 @@ function createLead($data, $url, $personId, $orgId, $apiToken) {
               . "&api_token=" . $apiToken;
 
     $getResponse = sendGetRequest($checkUrl);
+    if (!$getResponse) return null; 
     $existingId = $getResponse['data']['items'][0]['item']['id'] ?? null;
     if ($existingId) {
         return (string)$existingId;
@@ -162,8 +148,8 @@ function createLead($data, $url, $personId, $orgId, $apiToken) {
     ];
 
     $postUrl  = "https://nettbureaucase.pipedrive.com/api/v1/leads?api_token={$apiToken}";
-    $resp = sendPostRequest($postUrl, $payload);
+    $postResponse = sendPostRequest($postUrl, $payload);
+    if (!$postResponse) return null; 
 
-    // keep your existing return
-    return $resp['data']['id'] ?? null;
+    return $postResponse['data']['id'] ?? null;
 }

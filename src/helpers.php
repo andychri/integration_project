@@ -9,21 +9,21 @@
  * @return array|null     Decoded JSON array or null if something fails.
  */
 function sendPostRequest($url, $payload) {
-    $connect = curl_init($url);
-    curl_setopt_array($connect, [
-        CURLOPT_POST => true,
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-        CURLOPT_POSTFIELDS => json_encode($payload)]);
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS     => json_encode($payload),
+        CURLOPT_TIMEOUT        => 20,
+    ]);
+    $response = curl_exec($ch);
+    curl_close($ch);
 
-    $response = curl_exec($connect);
-    if ($response === false) {
-        die("cURL error: " . curl_error($connect));
-    }
-    $httpStatus = curl_getinfo($connect, CURLINFO_HTTP_CODE);
-    
-    curl_close($connect);
-    return json_decode($response, true);
+    if ($response === false) return null;
+
+    $decoded = json_decode($response, true);
+    return is_array($decoded) ? $decoded : null;
 }
 
 /**
@@ -32,21 +32,21 @@ function sendPostRequest($url, $payload) {
  * @param string $url     Endpoint URL
  * @return array|null     Decoded JSON (assoc array) or null if decoding fails
  */
+
 function sendGetRequest($url) {
-    $connect = curl_init($url);
-    curl_setopt_array($connect, [
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_HTTPHEADER => ["Content-Type: application/json"]]);
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT        => 20,
+    ]);
+    $response = curl_exec($ch);
+    curl_close($ch);
 
-    $response = curl_exec($connect);
-    if ($response === false) {
-        die("cURL error: " . curl_error($connect));
-    }
-    $httpStatus = curl_getinfo($connect, CURLINFO_HTTP_CODE);
-    curl_close($connect);
+    if ($response === false) return null;
 
-    
-    return json_decode($response, true);
+    $decoded = json_decode($response, true);
+    return is_array($decoded) ? $decoded : null;
 }
 
 /**

@@ -1,10 +1,7 @@
 <?php
-// run_tests.php — minimal runner
+// run_tests
 
-define('DEBUG_OUT', getenv('DEBUG_OUT') === '1');
-function dprint($s){ if (DEBUG_OUT) echo $s; }
-
-require 'pipedrive_lead_integration.php'; // <-- change if your functions live in another file
+require 'pipedrive_lead_integration.php';
 
 $testPath = $argv[1] ?? getenv('TEST_DATA') ?? 'tests/test_data.json';
 // load test data
@@ -24,21 +21,18 @@ if (file_exists($envFile)) {
 
 $token = $_ENV['PIPEDRIVE_API_TOKEN'] ?? null;
 
-$personPostUrl = "https://nettbureaucase.pipedrive.com/api/v2/persons?api_token={$token}";
-$leadPostUrl   = "https://nettbureaucase.pipedrive.com/api/v1/leads?api_token={$token}";
-
 // Run once
 $o1 = createOrganization($data, $token);
-$p1 = $o1 ? createPerson($data, $personPostUrl, $o1, $token) : null;
-$l1 = ($p1 && $o1) ? createLead($data, $leadPostUrl, $p1, $o1, $token) : null;
+$p1 = $o1 ? createPerson($data, $o1, $token) : null;
+$l1 = ($p1 && $o1) ? createLead($data, $p1, $o1, $token) : null;
 
-// Gives the data som chance to be posted on the API
-sleep(1);
+// Gives the data som chance to be posted on the API. If not the function may not be able to find the org,user,lead in the search.
+sleep(2);
 
 // run again to test duplication
 $o2 = createOrganization($data, $token);
-$p2 = $o2 ? createPerson($data, $personPostUrl, $o2, $token) : null;
-$l2 = ($p2 && $o2) ? createLead($data, $leadPostUrl, $p2, $o2, $token) : null;
+$p2 = $o2 ? createPerson($data, $o2, $token) : null;
+$l2 = ($p2 && $o2) ? createLead($data, $p2, $o2, $token) : null;
 
 // Print
 $pass = ($o1 && $o1===$o2) && ($p1 && $p1===$p2) && ($l1 && $l1===$l2);
@@ -51,7 +45,7 @@ $persRaw = $p1 ? sendGetRequest("https://nettbureaucase.pipedrive.com/api/v2/per
 // lead detail is v1
 $leadRaw = $l1 ? sendGetRequest("https://nettbureaucase.pipedrive.com/api/v1/leads/$l1?api_token=$token")          : null;
 
-echo "\nFIRST RUN RAW RESPONSES\n";
+echo "\nDisplay response\n";
 echo "Organization:\n";
 echo json_encode($orgRaw, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n\n";
 
